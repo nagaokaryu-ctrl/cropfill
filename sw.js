@@ -1,5 +1,5 @@
 // オフライン対応用。アプリを更新したら CACHE の番号を1つ上げる。
-const CACHE = 'cropfill-v1';
+const CACHE = 'cropfill-v2';
 const FILES = [
   './',
   './index.html',
