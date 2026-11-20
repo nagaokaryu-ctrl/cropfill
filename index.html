@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>クロップフィル カウンター</title>
+<meta name="theme-color" content="#1d1d1b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="クロップフィル">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+  :root{
+    --bg:#f6f5f2; --card:#fff; --ink:#1d1d1b; --sub:#6b6a66; --line:#e3e1dc;
+    --c1:#2f8f4e; --c2:#d08a16; --c3:#2b6cb0; --c4:#8a8781; --c5:#8b3fa8;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#161615; --card:#222220; --ink:#f1f0ec; --sub:#a3a19b; --line:#34332f; }
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;}
+  body{padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 24px);
+    max-width:560px; margin:0 auto; user-select:none; -webkit-user-select:none;}
+  h1{font-size:17px; margin:0 0 10px; font-weight:700;}
+  .meta{display:flex; gap:8px; margin-bottom:10px;}
+  .meta input,.meta select{flex:1; min-width:0; font-size:16px; padding:9px 10px; border-radius:10px;
+    border:1px solid var(--line); background:var(--card); color:var(--ink);}
+  .meta select{flex:0 0 112px;}
+  .place{display:flex; align-items:center; gap:8px; margin:-2px 0 10px; font-size:14px; color:var(--sub);}
+  .place input{flex:1; min-width:0; font-size:16px; padding:8px 10px; border-radius:10px;
+    border:1px solid var(--line); background:var(--card); color:var(--ink);}
+  .place button{font-size:13px; padding:9px 10px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--ink);}
+  .elapsed{font-size:14px; color:var(--sub); margin:-4px 0 10px;}
+  .elapsed b{color:var(--ink); font-size:16px;}
+  .btns{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  .cat{position:relative; border:none; border-radius:16px; padding:14px 12px 12px; color:#fff;
+    text-align:left; min-height:104px; cursor:pointer; touch-action:manipulation;
+    transition:transform .06s ease, filter .06s ease;}
+  .cat:active{transform:scale(.97); filter:brightness(.92);}
+  .cat .name{font-size:16px; font-weight:700;}
+  .cat .num{font-size:40px; font-weight:800; line-height:1.1; margin-top:4px; font-variant-numeric:tabular-nums;}
+  .cat .pct{font-size:13px; opacity:.9; font-variant-numeric:tabular-nums;}
+  .cat .minus{position:absolute; right:8px; top:8px; width:34px; height:34px; border-radius:50%;
+    background:rgba(255,255,255,.22); color:#fff; font-size:22px; line-height:34px; text-align:center; font-weight:700;}
+  .cat.wide{grid-column:1 / -1; min-height:92px;}
+  .k1{background:var(--c1)} .k2{background:var(--c2)} .k3{background:var(--c3)} .k4{background:var(--c4)} .k5{background:var(--c5)}
+  .summary{background:var(--card); border:1px solid var(--line); border-radius:16px; padding:12px 14px; margin-top:10px;}
+  .row{display:flex; justify-content:space-between; align-items:baseline; padding:3px 0;}
+  .row .l{color:var(--sub); font-size:14px;}
+  .row .v{font-size:22px; font-weight:800; font-variant-numeric:tabular-nums;}
+  .row .v small{font-size:13px; font-weight:600; color:var(--sub); margin-left:4px;}
+  .bar{display:flex; height:10px; border-radius:6px; overflow:hidden; background:var(--line); margin-top:8px;}
+  .bar span{display:block; height:100%; transition:width .15s;}
+  .actions{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px;}
+  .act{border:1px solid var(--line); background:var(--card); color:var(--ink); border-radius:12px;
+    padding:12px 6px; font-size:15px; font-weight:600; cursor:pointer;}
+  .act.primary{background:var(--ink); color:var(--bg); border-color:var(--ink);}
+  .act:active{filter:brightness(.9);}
+  h2{font-size:15px; margin:20px 0 8px; display:flex; justify-content:space-between; align-items:center;}
+  h2 .tools{display:flex; gap:6px;}
+  h2 .tools button{font-size:13px; padding:6px 10px; border-radius:8px; border:1px solid var(--line);
+    background:var(--card); color:var(--ink); cursor:pointer;}
+  table{width:100%; border-collapse:collapse; font-size:12.5px; background:var(--card);
+    border:1px solid var(--line); border-radius:12px; overflow:hidden; font-variant-numeric:tabular-nums;}
+  th,td{padding:7px 5px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap;}
+  th{color:var(--sub); font-weight:600; font-size:11.5px;}
+  th:first-child,td:first-child{text-align:left; white-space:normal;}
+  tr:last-child td{border-bottom:none;}
+  td .del{border:none; background:none; color:var(--sub); font-size:16px; cursor:pointer; padding:0 2px;}
+  .empty{color:var(--sub); font-size:13px; text-align:center; padding:14px; background:var(--card);
+    border:1px dashed var(--line); border-radius:12px;}
+  .note{color:var(--sub); font-size:12px; margin-top:8px; line-height:1.5;}
+  .modal{position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; padding:24px; z-index:10;}
+  .modal.show{display:flex;}
+  .dlg{background:var(--card); border-radius:16px; padding:18px; width:100%; max-width:340px;}
+  .dlg p{margin:0 0 14px; font-size:15px; line-height:1.5;}
+  .dlg .b{display:flex; gap:8px;}
+  .dlg .b button{flex:1; padding:12px; border-radius:10px; font-size:15px; font-weight:600; border:1px solid var(--line); background:var(--card); color:var(--ink);}
+  .dlg .b .ok{background:#c0392b; color:#fff; border-color:#c0392b;}
+  .toast{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 24px); transform:translateX(-50%);
+    background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:20px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none;}
+  .toast.show{opacity:.95;}
+</style>
+</head>
+<body>
+  <h1>クロップフィル カウンター</h1>
+
+  <div class="meta">
+    <input id="label" type="text" placeholder="鶏舎・区（例：1号舎 前）" autocomplete="off">
+    <select id="time">
+      <option>2時間</option><option>4時間</option><option>6時間</option><option>8時間</option>
+      <option>12時間</option><option>24時間</option><option>48時間</option><option>その他</option>
+    </select>
+  </div>
+  <div class="place">
+    <span>入雛</span>
+    <input id="placed" type="datetime-local">
+    <button id="placedNow">今</button>
+  </div>
+  <div class="elapsed" id="elapsed"></div>
+
+  <div class="btns" id="btns"></div>
+
+  <div class="summary">
+    <div class="row"><span class="l">合計羽数</span><span class="v" id="total">0<small>羽</small></span></div>
+    <div class="row"><span class="l">餌あり率（餌水両方＋餌のみ）</span><span class="v" id="feedRate">–</span></div>
+    <div class="row"><span class="l">餌水両方率</span><span class="v" id="bothRate">–</span></div>
+    <div class="bar" id="bar"></div>
+  </div>
+
+  <div class="actions">
+    <button class="act" id="undo">↶ 取消</button>
+    <button class="act" id="reset">リセット</button>
+    <button class="act primary" id="save">記録する</button>
+  </div>
+
+  <h2>記録
+    <span class="tools">
+      <button id="copy">Excel用にコピー</button>
+      <button id="clearHist">全消去</button>
+    </span>
+  </h2>
+  <div id="hist"></div>
+  <div class="note">ボタンをタップで＋1、右上の「−」で−1。「記録する」で現在のカウントを下の表に保存してゼロに戻します。入雛時刻を入れておくと、記録に実際の経過時間も残ります。記録はこの端末のアプリ内にだけ残るので、終わったら「Excel用にコピー」で貼り付けて保管してください。</div>
+
+  <div class="modal" id="modal"><div class="dlg"><p id="mmsg"></p>
+    <div class="b"><button id="mcancel">キャンセル</button><button class="ok" id="mok">OK</button></div></div></div>
+  <div class="toast" id="toast"></div>
+
+<script>
+const CATS = [
+  {key:'both',  name:'餌水両方', cls:'k1', color:'var(--c1)'},
+  {key:'feed',  name:'餌のみ',   cls:'k2', color:'var(--c2)'},
+  {key:'water', name:'水のみ',   cls:'k3', color:'var(--c3)'},
+  {key:'empty', name:'空',       cls:'k4', color:'var(--c4)'},
+  {key:'foreign',name:'異物',    cls:'k5', color:'var(--c5)', wide:true},
+];
+const SKEY = 'cropfill-counter-v1';
+let state = {counts:{both:0,feed:0,water:0,empty:0,foreign:0}, log:[], hist:[], label:'', time:'2時間', placed:''};
+
+// 入雛からの経過時間（時間、小数1桁）。入雛時刻が未入力なら null
+function elapsedH(atMs){
+  if(!state.placed) return null;
+  const p = new Date(state.placed).getTime();
+  if(isNaN(p)) return null;
+  const h = ((atMs ?? Date.now()) - p) / 3600000;
+  return h >= 0 ? Math.round(h*10)/10 : null;
+}
+function renderElapsed(){
+  const h = elapsedH();
+  $('elapsed').innerHTML = h === null ? '' : `入雛からの経過：<b>${h.toFixed(1)}時間</b>`;
+}
+
+function load(){ try{ const s = JSON.parse(localStorage.getItem(SKEY)); if(s && s.counts) state = Object.assign(state, s); }catch(e){} }
+function persist(){ try{ localStorage.setItem(SKEY, JSON.stringify(state)); }catch(e){} }
+
+const $ = id => document.getElementById(id);
+const btnWrap = $('btns');
+CATS.forEach(c=>{
+  const b = document.createElement('button');
+  b.className = 'cat ' + c.cls + (c.wide?' wide':'');
+  b.innerHTML = `<div class="name">${c.name}</div><div class="num" id="n-${c.key}">0</div><div class="pct" id="p-${c.key}">–</div><div class="minus" data-minus="${c.key}">−</div>`;
+  b.addEventListener('click', e=>{
+    if(e.target.dataset.minus){ change(c.key, -1); } else { change(c.key, +1); }
+  });
+  btnWrap.appendChild(b);
+});
+
+function buzz(){ try{ navigator.vibrate && navigator.vibrate(15); }catch(e){} }
+function change(k, d){
+  if(d<0 && state.counts[k]===0) return;
+  state.counts[k] += d;
+  state.log.push({k, d});
+  if(state.log.length>500) state.log.shift();
+  buzz(); render(); persist();
+}
+const total = c => Object.values(c).reduce((a,b)=>a+b,0);
+const pct = (n,t) => t ? (n/t*100).toFixed(1)+'%' : '–';
+
+function render(){
+  const c = state.counts, t = total(c);
+  CATS.forEach(x=>{ $('n-'+x.key).textContent = c[x.key]; $('p-'+x.key).textContent = pct(c[x.key], t); });
+  $('total').innerHTML = t + '<small>羽</small>';
+  $('feedRate').textContent = pct(c.both + c.feed, t);
+  $('bothRate').textContent = pct(c.both, t);
+  $('bar').innerHTML = t ? CATS.map(x=>`<span style="width:${c[x.key]/t*100}%;background:${x.color}"></span>`).join('') : '';
+  renderHist();
+}
+
+function renderHist(){
+  const h = state.hist;
+  if(!h.length){ $('hist').innerHTML = '<div class="empty">まだ記録はありません</div>'; return; }
+  let html = '<table><thead><tr><th>鶏舎・区／時間</th><th>両方</th><th>餌</th><th>水</th><th>空</th><th>異物</th><th>計</th><th>餌あり</th><th></th></tr></thead><tbody>';
+  h.slice().reverse().forEach((r, i)=>{
+    const idx = h.length-1-i, t = total(r.counts);
+    html += `<tr><td>${esc(r.label||'—')}<br><span style="color:var(--sub)">${esc(r.time)}${r.elapsed!=null?'（実'+r.elapsed.toFixed(1)+'h）':''}・${r.at}</span></td>
+      <td>${r.counts.both}</td><td>${r.counts.feed}</td><td>${r.counts.water}</td><td>${r.counts.empty}</td><td>${r.counts.foreign}</td>
+      <td>${t}</td><td>${pct(r.counts.both+r.counts.feed, t)}</td>
+      <td><button class="del" data-del="${idx}">×</button></td></tr>`;
+  });
+  html += '</tbody></table>';
+  $('hist').innerHTML = html;
+  $('hist').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{
+    ask('この記録を削除しますか？', ()=>{ state.hist.splice(+b.dataset.del,1); persist(); renderHist(); });
+  });
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+function ask(msg, ok){
+  $('mmsg').textContent = msg; $('modal').classList.add('show');
+  $('mok').onclick = ()=>{ $('modal').classList.remove('show'); ok(); };
+  $('mcancel').onclick = ()=> $('modal').classList.remove('show');
+}
+function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1600); }
+
+$('undo').onclick = ()=>{
+  const last = state.log.pop(); if(!last) return;
+  state.counts[last.k] = Math.max(0, state.counts[last.k] - last.d);
+  buzz(); render(); persist();
+};
+$('reset').onclick = ()=>{
+  if(!total(state.counts)) return;
+  ask('現在のカウントをゼロに戻しますか？（記録は残ります）', ()=>{
+    Object.keys(state.counts).forEach(k=>state.counts[k]=0); state.log=[]; render(); persist();
+  });
+};
+$('save').onclick = ()=>{
+  if(!total(state.counts)){ toast('カウントがありません'); return; }
+  const d = new Date(), at = `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  state.hist.push({label:state.label, time:state.time, at, elapsed:elapsedH(d.getTime()), counts:Object.assign({}, state.counts)});
+  Object.keys(state.counts).forEach(k=>state.counts[k]=0); state.log=[];
+  render(); persist(); toast('記録しました');
+};
+$('copy').onclick = async ()=>{
+  if(!state.hist.length){ toast('記録がありません'); return; }
+  const head = ['日時','鶏舎・区','確認時間','入雛後経過(h)','餌水両方','餌のみ','水のみ','空','異物','合計','餌あり率(%)','餌水両方率(%)'];
+  const rows = state.hist.map(r=>{ const c=r.counts, t=total(c);
+    return [r.at, r.label, r.time, r.elapsed!=null?r.elapsed.toFixed(1):'', c.both, c.feed, c.water, c.empty, c.foreign, t,
+      t?(((c.both+c.feed)/t)*100).toFixed(1):'', t?((c.both/t)*100).toFixed(1):''].join('\t'); });
+  const text = [head.join('\t'), ...rows].join('\n');
+  try{ await navigator.clipboard.writeText(text); toast('コピーしました（Excelに貼り付け可）'); }
+  catch(e){ toast('コピーできませんでした'); }
+};
+$('clearHist').onclick = ()=>{
+  if(!state.hist.length) return;
+  ask('記録をすべて削除しますか？', ()=>{ state.hist=[]; persist(); renderHist(); });
+};
+$('label').addEventListener('input', e=>{ state.label = e.target.value; persist(); });
+$('time').addEventListener('change', e=>{ state.time = e.target.value; persist(); });
+
+function toLocalInput(d){
+  const z = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`;
+}
+$('placed').addEventListener('change', e=>{ state.placed = e.target.value; persist(); renderElapsed(); });
+$('placedNow').onclick = ()=>{ state.placed = toLocalInput(new Date()); $('placed').value = state.placed; persist(); renderElapsed(); };
+
+load();
+$('label').value = state.label; $('time').value = state.time; $('placed').value = state.placed || '';
+render(); renderElapsed();
+setInterval(renderElapsed, 30000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) renderElapsed(); });
+
+// オフラインで使えるようにする
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
